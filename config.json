@@ -1,0 +1,11 @@
+{
+   "room_mapping": [ 
+        {
+            "id":1,
+            "pin":24,
+            "name":"Grigori room",
+            "room_sensor":"28-00000455cbb8",
+            "heater_sensor":""
+        }
+    ]
+}
