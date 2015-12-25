@@ -23,7 +23,8 @@ with open('config.json') as data_file:
         rs = room['room_sensor']
         hs = room['heater_sensor']
         t = read_temperature(pt_templ.format(rs))
-        s = 'INSERT INTO stats (room, time, temp_room) VALUES(\'{}\',{}, {})'.format(name, int(time.time()), t)
+        t_h = read_temperature(pt_templ.format(hs))
+        s = 'INSERT INTO stats (room, time, temp_room, temp_htr) VALUES(\'{}\',{}, {}, {})'.format(name, int(time.time()), t, t_h)
         print s
         cur.execute(s)
         con.commit()
