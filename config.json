@@ -6,6 +6,13 @@
             "name":"Grigori room",
             "room_sensor":"28-00000455cbb8",
             "heater_sensor":"28-000004934ea6"
+        },
+        {
+            "id":2,
+            "pin":22,
+            "name":"Кухня",
+            "room_sensor":"28-00000455cbb8",
+            "heater_sensor":"28-000004934ea6"
         }
     ]
 }
