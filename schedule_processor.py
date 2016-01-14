@@ -1,15 +1,17 @@
 import json
 from pprint import pprint
 import sqlite3
+import sys
 import time
+import pdb
 import RPi.GPIO as GPIO
-import python_daemon as daemon
+from python_daemon import Daemon
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(24, GPIO.OUT)
 GPIO.setup(23, GPIO.OUT)
+GPIO.setup(22, GPIO.OUT)
 
-last_boiler_working_time = 0
 
 room_status = {}
 
@@ -18,13 +20,11 @@ def getTime(time_str):
     r += int(time_str.split(':')[1])
     return r
 
-
-
 def getKey(entry):
     return getTime(entry['start'])
  
 def get_required_temperature(room_id):
-    with open('schedule_{}.json'.format(room_id)) as data_file:    
+    with open('/home/pi/project/schedule_{}.json'.format(room_id)) as data_file:    
         data = json.load(data_file)
         entry_list = sorted(data['schedule'],key=getKey)
         time_list = []
@@ -42,7 +42,7 @@ def update_status(ident, name, req_temp, current_temp):
     json_res['room_ht']       = current_temp[1]
     json_res['room_req_temp'] = req_temp[0]
     json_res['room_req_htr']  = req_temp[1]
-    fh = open('status_{}.json'.format(ident), 'w')
+    fh = open('/home/pi/project/status_{}.json'.format(ident), 'w')
     fh.write(json.dumps(json_res))
     fh.close()
 
@@ -113,13 +113,36 @@ def check_rooms(config_name, last_boiler_working_time, room_status):
 import logging
 formatter = logging.Formatter(fmt='%(asctime)s %(message)s')
 
-handler = logging.FileHandler('sp_output.log')
+handler = logging.FileHandler('/home/pi/project/sp_output.log')
 handler.setFormatter(formatter)
 
 logger = logging.getLogger('sp_logger')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 
-while True:
-    last_boiler_working_time = check_rooms('config.json', last_boiler_working_time, room_status)
-    time.sleep(30)
+con = sqlite3.connect('/home/pi/project/ess2.db')
+cur = con.cursor()
+
+class ScheduleDaemon(Daemon):
+    def run(self):
+        last_boiler_working_time = 0
+        while True:
+            last_boiler_working_time = check_rooms('/home/pi/project/config.json', last_boiler_working_time, room_status)
+            time.sleep(30)
+
+if __name__ == "__main__":
+        daemon = ScheduleDaemon('/tmp/schedule.pid', stdout = '/dev/stdout', stderr = '/dev/stderr')
+        if len(sys.argv) == 2:
+                if 'start' == sys.argv[1]:
+                        daemon.start()
+                elif 'stop' == sys.argv[1]:
+                        daemon.stop()
+                elif 'restart' == sys.argv[1]:
+                        daemon.restart()
+                else:
+                        print "Unknown command"
+                        sys.exit(2)
+                sys.exit(0)
+        else:
+                print "usage: %s start|stop|restart" % sys.argv[0]
+                sys.exit(2)
