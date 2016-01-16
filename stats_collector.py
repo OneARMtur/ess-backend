@@ -74,7 +74,7 @@ class StatsDaemon(Daemon):
             time.sleep(60)
 
 if __name__ == "__main__":
-        daemon = StatsDaemon('/tmp/stats.pid', stdout = '/dev/stdout', stderr = '/dev/stderr')
+        daemon = StatsDaemon('/tmp/stats.pid', stdout = '/dev/stdout', stderr = '/tmp/errout')
         if len(sys.argv) == 2:
                 if 'start' == sys.argv[1]:
                         daemon.start()
