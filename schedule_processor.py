@@ -50,13 +50,14 @@ def is_heating_necessary(ident, name):
     add_temperature_to_series(ident, current_temp)
     r = room_temp_series[ident]
     logger = logging.getLogger('sp_logger')
+    logger.warning(u'Checking room {}'.format(name))
     logger.warning('series is {}'.format(r))
     logger.warning('Required temperature is {}'.format(required_temp))
     for temp in r:
-        if temp[0] > required_temp[0]:
+        if float(temp[0]) > required_temp[0]:
             logger.warning('Temperature in {} is more than req'.format(temp))
             return False
-        if temp[1] is not None and temp[1] > required_temp[1]:
+        if temp[1] is not None and float(temp[1]) > required_temp[1]:
             logger.warning('Heater temperature in {} is greater than threshold'.format(temp))
             return False
     return True
@@ -69,6 +70,7 @@ def set_valves_state(room_status):
 def check_rooms(config_name, last_boiler_working_time, room_status):
     turn_boiler_on = False
     logger = logging.getLogger('sp_logger')
+    logger.warning("=========== processing rooms =============")
     with open(config_name) as data_file:
         data = json.load(data_file)
         for room in data['room_mapping']:
@@ -86,7 +88,7 @@ def check_rooms(config_name, last_boiler_working_time, room_status):
                     logger.warning(u'Turn OFF heating in room {}, {}'.format(ident,name))
                     last_boiler_working_time = time.time()
                     room_status[pin] = 0
-        logger.warning("Last boiler working time is {}".format(last_boiler_working_time))
+        #logger.warning("Last boiler working time is {}".format(last_boiler_working_time))
         if turn_boiler_on == True:
             logger.warning("Turn boiler on")
             set_valves_state(room_status)

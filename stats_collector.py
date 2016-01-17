@@ -23,7 +23,7 @@ def get_required_temperature(room_id):
             minutes = current_time.tm_hour*60 + current_time.tm_min
             if minutes >= getTime(i['start']) and minutes <= getTime(i['end']) and getTime(i['start']) <= getTime(i['end']):
                 return (float(i['t']), float(i['th']))
-            if minutes >= getTime(i['start']) and minutes <= getTime(i['end'])+24*60 and getTime(i['start']) > getTime(i['end']):
+            if (minutes >= getTime(i['start']) or minutes <= getTime(i['end'])) and getTime(i['start']) > getTime(i['end']):
                 return (float(i['t']), float(i['th']))
 
 
@@ -46,15 +46,36 @@ def update_status(ident, name, req_temp, current_temp):
 
 
 def read_temperature(path):
-    f = file(path, 'r')
-    data = f.read()
-    temp = data.split('\n')[1].split('=')[1]
-    return temp[0:2] + '.' + temp[2:-1]
+    temp_str = '85.0'
+    logger = logging.getLogger('sp_logger')
+    atmp = 0
+    while temp_str == '85.0':
+        f = file(path, 'r')
+        data = f.read()
+        temp = data.split('\n')[1].split('=')[1]
+        temp_str = temp[0:2] + '.' + temp[2:-1]
+        atmp += 1
+        if temp_str == '85.0':
+            time.sleep(1)
+        if atmp >= 3:
+            logger.warning("After 3 attempts temp is {}; room {}".format(temp_str, path))
+            break
+    return temp_str
 
 pt_templ = "/sys/bus/w1/devices/{}/w1_slave"
 
 con = sqlite3.connect('/home/pi/project/ess2.db')
 cur = con.cursor()
+
+import logging
+formatter = logging.Formatter(fmt='%(asctime)s %(message)s')
+
+handler = logging.FileHandler('/home/pi/project/sc_output.log')
+handler.setFormatter(formatter)
+
+logger = logging.getLogger('sc_logger')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
 
 class StatsDaemon(Daemon):
     def run(self):
@@ -69,8 +90,8 @@ class StatsDaemon(Daemon):
                     t = read_temperature(pt_templ.format(rs))
                     t_h = read_temperature(pt_templ.format(hs))
                     req = get_required_temperature(ident)
-                    store_statistics(ident, name, req, (t, t_h))
                     update_status(ident, name, req, (t, t_h))
+                    store_statistics(ident, name, req, (t, t_h))
             time.sleep(60)
 
 if __name__ == "__main__":
