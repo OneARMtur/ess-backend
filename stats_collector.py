@@ -1,8 +1,9 @@
-import json
-from pprint import pprint
-import sqlite3
-import time
 import sys
+import json
+import time
+import sqlite3
+import logging
+from pprint import pprint
 from python_daemon import Daemon
 
 def getTime(time_str):
@@ -13,8 +14,8 @@ def getTime(time_str):
 def getKey(entry):
     return getTime(entry['start'])
 
-def get_required_temperature(room_id):
-    with open('/home/pi/project/schedule_{}.json'.format(room_id)) as data_file:
+def get_required_temperature(project_dir, room_id):
+    with open(project_dir + '/schedule_{}.json'.format(room_id)) as data_file:
         data = json.load(data_file)
         entry_list = sorted(data['schedule'],key=getKey)
         time_list = []
@@ -27,20 +28,22 @@ def get_required_temperature(room_id):
                 return (float(i['t']), float(i['th']))
 
 
-def store_statistics(ident, name, req_temp, current_temp):
+def store_statistics(project_dir, ident, name, req_temp, current_temp):
+    con = sqlite3.connect(project_dir + '/ess2.db')
+    cur = con.cursor()
     s = u'INSERT INTO stats (id, room, time, temp_room, temp_htr, target_room, target_htr) VALUES(\'{}\',\'{}\',{}, {}, {}, {}, {})'.format(str(ident),name, int(time.time()), current_temp[0], current_temp[1], req_temp[0], req_temp[1])
     cur.execute(s)
     con.commit()
     return True
 
-def update_status(ident, name, req_temp, current_temp):
+def update_status(project_dir, ident, name, req_temp, current_temp):
     json_res = {}
     json_res['room_name']     = name
     json_res['room_temp']     = current_temp[0]
     json_res['room_ht']       = current_temp[1]
     json_res['room_req_temp'] = req_temp[0]
     json_res['room_req_htr']  = req_temp[1]
-    fh = open('/home/pi/project/status_{}.json'.format(ident), 'w')
+    fh = open(project_dir + '/status_{}.json'.format(ident), 'w')
     fh.write(json.dumps(json_res))
     fh.close()
 
@@ -62,36 +65,34 @@ def read_temperature(path):
             break
     return temp_str
 
-pt_templ = "/sys/bus/w1/devices/{}/w1_slave"
-
-con = sqlite3.connect('/home/pi/project/ess2.db')
-cur = con.cursor()
-
-import logging
-formatter = logging.Formatter(fmt='%(asctime)s %(message)s')
-
-handler = logging.FileHandler('/home/pi/project/sc_output.log')
-handler.setFormatter(formatter)
-
-logger = logging.getLogger('sc_logger')
-logger.setLevel(logging.DEBUG)
-logger.addHandler(handler)
 
 class StatsDaemon(Daemon):
     def run(self):
+        pt_templ = "/sys/bus/w1/devices/{}/w1_slave"
+
+        with open('/etc/ess.config') as data_file:
+            config_data = json.load(data_file)
+            project_dir = config_data['project_dir']
+
+        formatter = logging.Formatter(fmt='%(asctime)s %(message)s')
+
+        handler = logging.FileHandler(project_dir + '/sc_output.log')
+        handler.setFormatter(formatter)
+
+        logger = logging.getLogger('sc_logger')
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(handler)
         while True:
-            with open('/home/pi/project/config.json') as data_file:
-                data = json.load(data_file)
-                for room in data['room_mapping']:
-                    name  = room['name']
-                    rs    = room['room_sensor']
-                    hs    = room['heater_sensor']
-                    ident = room['id']
-                    t = read_temperature(pt_templ.format(rs))
-                    t_h = read_temperature(pt_templ.format(hs))
-                    req = get_required_temperature(ident)
-                    update_status(ident, name, req, (t, t_h))
-                    store_statistics(ident, name, req, (t, t_h))
+            for room in config_data['room_mapping']:
+                name  = room['name']
+                rs    = room['room_sensor']
+                hs    = room['heater_sensor']
+                ident = room['id']
+                t = read_temperature(pt_templ.format(rs))
+                t_h = read_temperature(pt_templ.format(hs))
+                req = get_required_temperature(project_dir, ident)
+                update_status(project_dir, ident, name, req, (t, t_h))
+                store_statistics(project_dir, ident, name, req, (t, t_h))
             time.sleep(60)
 
 if __name__ == "__main__":
