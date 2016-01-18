@@ -30,12 +30,12 @@ def getKey(entry):
 def get_current_temperature(project_dir, ident):
     with open(project_dir + '/status_{}.json'.format(ident)) as data_file:
         data = json.load(data_file)
-        return data['room_temp'], data['room_ht']
+        return data['temp_room'], data['temp_radiator']
 
 def get_required_temperature(project_dir, ident):
     with open(project_dir + '/status_{}.json'.format(ident)) as data_file:
         data = json.load(data_file)
-        return data['room_req_temp'], data['room_req_htr']
+        return data['target_temp_room'], data['target_temp_radiator']
 
 def add_temperature_to_series(ident, temp):
     if ident in room_temp_series:

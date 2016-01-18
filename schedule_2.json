@@ -1,6 +1,6 @@
 {
 "out_pin":"2",
 "schedule":[
-{"start":"8:00","end":"21:00","t":"20.5","th":"50"},
-{"start":"21:00","end":"8:00","t":"21.5","th":"60"}
+{"start":"8:00","end":"21:00","temp_room":"20.5","temp_radiator":"50"},
+{"start":"21:00","end":"8:00","temp_room":"21.5","temp_radiator":"60"}
 ]}

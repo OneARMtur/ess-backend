@@ -23,26 +23,26 @@ def get_required_temperature(project_dir, room_id):
         for i in entry_list:
             minutes = current_time.tm_hour*60 + current_time.tm_min
             if minutes >= getTime(i['start']) and minutes <= getTime(i['end']) and getTime(i['start']) <= getTime(i['end']):
-                return (float(i['t']), float(i['th']))
+                return (float(i['temp_room']), float(i['temp_radiator']))
             if (minutes >= getTime(i['start']) or minutes <= getTime(i['end'])) and getTime(i['start']) > getTime(i['end']):
-                return (float(i['t']), float(i['th']))
+                return (float(i['temp_room']), float(i['temp_radiator']))
 
 
 def store_statistics(project_dir, ident, name, req_temp, current_temp):
     con = sqlite3.connect(project_dir + '/ess2.db')
     cur = con.cursor()
-    s = u'INSERT INTO stats (id, room, time, temp_room, temp_htr, target_room, target_htr) VALUES(\'{}\',\'{}\',{}, {}, {}, {}, {})'.format(str(ident),name, int(time.time()), current_temp[0], current_temp[1], req_temp[0], req_temp[1])
+    s = u'INSERT INTO stats (id, room, time, temp_room, temp_radiator, target_temp_room, target_temp_radiator) VALUES(\'{}\',\'{}\',{}, {}, {}, {}, {})'.format(str(ident),name, int(time.time()), current_temp[0], current_temp[1], req_temp[0], req_temp[1])
     cur.execute(s)
     con.commit()
     return True
 
 def update_status(project_dir, ident, name, req_temp, current_temp):
     json_res = {}
-    json_res['room_name']     = name
-    json_res['room_temp']     = current_temp[0]
-    json_res['room_ht']       = current_temp[1]
-    json_res['room_req_temp'] = req_temp[0]
-    json_res['room_req_htr']  = req_temp[1]
+    json_res['room_name']             = name
+    json_res['temp_room']             = current_temp[0]
+    json_res['temp_radiator']         = current_temp[1]
+    json_res['target_temp_room']      = req_temp[0]
+    json_res['target_temp_radiator']  = req_temp[1]
     fh = open(project_dir + '/status_{}.json'.format(ident), 'w')
     fh.write(json.dumps(json_res))
     fh.close()
