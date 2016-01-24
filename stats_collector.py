@@ -11,13 +11,10 @@ def getTime(time_str):
     r += int(time_str.split(':')[1])
     return r
 
-def getKey(entry):
-    return getTime(entry['start'])
-
 def get_required_temperature(project_dir, room_id):
     with open(project_dir + '/schedule_{}.json'.format(room_id)) as data_file:
         data = json.load(data_file)
-        entry_list = sorted(data['schedule'],key=getKey)
+        entry_list = sorted(data['schedule'],key=lambda x: getTime(x))
         time_list = []
         current_time = time.localtime()
         for i in entry_list:

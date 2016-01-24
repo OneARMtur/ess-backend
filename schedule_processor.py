@@ -18,15 +18,6 @@ GPIO.setup(22, GPIO.OUT)
 room_status = {}
 room_temp_series = {}
 
-def getTime(time_str):
-    r = int(time_str.split(':')[0])*60
-    r += int(time_str.split(':')[1])
-    return r
-
-def getKey(entry):
-    return getTime(entry['start'])
-
-
 def get_current_temperature(project_dir, ident):
     with open(project_dir + '/status_{}.json'.format(ident)) as data_file:
         data = json.load(data_file)
@@ -46,20 +37,20 @@ def add_temperature_to_series(ident, temp):
         room_temp_series[ident].pop(0)
 
 def is_heating_necessary(project_dir, ident, name):
-    required_temp = get_required_temperature(project_dir, ident)
+    req_room_t, req_radiator_t = get_required_temperature(project_dir, ident)
     current_temp = get_current_temperature(project_dir, ident)
     add_temperature_to_series(ident, current_temp)
     r = room_temp_series[ident]
     logger = logging.getLogger('sp_logger')
     logger.warning(u'Checking room {}'.format(name))
     logger.warning('series is {}'.format(r))
-    logger.warning('Required temperature is {}'.format(required_temp))
-    for temp in r:
-        if float(temp[0]) > required_temp[0]:
-            logger.warning('Temperature in {} is more than req'.format(temp))
+    logger.warning('Required temperature is {}, {}'.format(req_room_t, req_radiator_t))
+    for current_room_t, current_radiator_t in r:
+        if float(current_room_t) > req_room_t:
+            logger.warning('Temperature in {} is more than req'.format(current_room_t))
             return False
-        if temp[1] is not None and float(temp[1]) > required_temp[1]:
-            logger.warning('Heater temperature in {} is greater than threshold'.format(temp))
+        if current_radiator_t is not None and float(current_radiator_t) > req_radiator_t:
+            logger.warning('Heater temperature in {} is greater than threshold'.format(current_raidator_t))
             return False
     return True
 
@@ -78,6 +69,8 @@ def check_rooms(config_name, last_boiler_working_time, room_status):
         for room in data['room_mapping']:
             name  = room['name']
             ident = room['id']
+            if 'pin' not in room:
+                logger.warning(u'Skipping room {}, no output pin'.format(name))
             pin   = room['pin']
             if is_heating_necessary(project_dir, ident, name) == True:
                 turn_boiler_on = True
